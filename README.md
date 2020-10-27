@@ -97,3 +97,8 @@ information will help reCAPTCHA Enterprise perform better for your site over tim
 
 
 ![RECAPTCHA_TREE](./images/tree.png)
+
+### Sequence Diagram
+
+
+![SEQUENCE](./images/sequence.png)
