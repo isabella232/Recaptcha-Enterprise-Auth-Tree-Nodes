@@ -25,7 +25,7 @@ To deploy these nodes, download the jar from the releases tab on github
  the ../web-container/webapps/openam/WEB-INF/lib directory where AM is deployed. Restart the web container to pick up the 
 new nodes. The nodes will then appear in the authentication trees components palette.
 
-This node assumes you have the following:
+These nodes assumes you have the following:
 * A Google Cloud Project with reCaptcha Enterprise Enabled
 * A reCAPTCHA Enterprise Key
     * That has the AM Domain whitelisted
@@ -36,8 +36,7 @@ This node assumes you have the following:
 This node tags the AM login page with the Recaptcha Enterprise JS to collect information about the event.
 
 #### Recaptcha Enterprise Profiler Node Configuration
-* **reCaptcha Enterprise Site Key** - Google reCaptcha Enterprise Site Key. You can find this key at <code>https
-://console.cloud.google.com/recaptcha?project={{Project_ID}}</code>
+* **reCaptcha Enterprise Site Key** - Google reCaptcha Enterprise Site Key. You can find this key at <code>https://console.cloud.google.com/recaptcha?project={{Project_ID}}</code>
 * **reCaptcha Action** - The action that the user is performing when the instrumentation is performed.
   
 ### Recaptcha Enterprise Assessment Node
