@@ -3,6 +3,7 @@ package org.google.RecaptchaEnterprise;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import org.forgerock.openam.auth.node.api.InputState;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,4 +51,6 @@ final class RecaptchaHelper {
         }
         return recaptchaEnterpriseServiceClient;
     }
+
+    
 }

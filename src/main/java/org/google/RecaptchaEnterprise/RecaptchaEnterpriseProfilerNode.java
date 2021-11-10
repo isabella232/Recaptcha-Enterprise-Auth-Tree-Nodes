@@ -17,21 +17,15 @@
 
 package org.google.RecaptchaEnterprise;
 
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_ACTION;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SITE_KEY;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_TOKEN;
-
 import java.util.Arrays;
 
 import javax.inject.Inject;
 import javax.security.auth.callback.TextOutputCallback;
 
+import com.google.common.collect.ImmutableMap;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
-import org.forgerock.openam.auth.node.api.Action;
-import org.forgerock.openam.auth.node.api.Node;
-import org.forgerock.openam.auth.node.api.SingleOutcomeNode;
-import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.auth.node.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +34,14 @@ import com.sun.identity.authentication.callbacks.HiddenValueCallback;
 import com.sun.identity.authentication.callbacks.ScriptTextOutputCallback;
 import com.sun.identity.sm.RequiredValueValidator;
 
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.*;
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_REASON_CODE_LIST;
+
 /**
  * A node that instruments the ForgeRock Login page with reCaptcha Enterprise
  */
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class,
-        configClass = RecaptchaEnterpriseProfilerNode.Config.class)
+        configClass = RecaptchaEnterpriseProfilerNode.Config.class, tags = {"risk"})
 public class RecaptchaEnterpriseProfilerNode extends SingleOutcomeNode {
 
     private final Logger logger = LoggerFactory.getLogger(RecaptchaEnterpriseProfilerNode.class);
@@ -99,5 +96,13 @@ public class RecaptchaEnterpriseProfilerNode extends SingleOutcomeNode {
         String script = String.format(RecaptchaHelper.SETUP_DOM_SCRIPT, config.siteKey(), config.action());
         return Action.send(
                 Arrays.asList(new HiddenValueCallback(RECAPTCHA_TOKEN), new ScriptTextOutputCallback(script))).build();
+    }
+
+    @Override
+    public OutputState[] getOutputs() {
+        return new OutputState[]{new OutputState(RECAPTCHA_TOKEN, ImmutableMap.of("outcome", true)),
+                new OutputState(RECAPTCHA_SITE_KEY, ImmutableMap.of("outcome", true)),
+                new OutputState(RECAPTCHA_ACTION, ImmutableMap.of("outcome", true))
+        };
     }
 }

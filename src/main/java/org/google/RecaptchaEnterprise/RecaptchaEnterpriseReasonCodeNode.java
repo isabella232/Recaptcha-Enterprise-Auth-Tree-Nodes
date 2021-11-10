@@ -2,6 +2,7 @@ package org.google.RecaptchaEnterprise;
 
 import static org.forgerock.openam.auth.node.api.Action.goTo;
 import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_REASON_CODE_LIST;
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SCORE;
 
 import java.util.Collection;
 import java.util.List;
@@ -9,11 +10,9 @@ import java.util.ResourceBundle;
 
 import javax.inject.Inject;
 
+import com.google.common.collect.ImmutableMap;
 import org.forgerock.json.JsonValue;
-import org.forgerock.openam.auth.node.api.Action;
-import org.forgerock.openam.auth.node.api.Node;
-import org.forgerock.openam.auth.node.api.OutcomeProvider;
-import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.auth.node.api.*;
 import org.forgerock.util.i18n.PreferredLocales;
 
 import com.google.common.collect.ImmutableList;
@@ -24,7 +23,7 @@ import com.google.recaptchaenterprise.v1.RiskAnalysis;
  * A node that checks Recaptcha Enterprise Reason Codes
  */
 @Node.Metadata(outcomeProvider = RecaptchaEnterpriseReasonCodeNode.RecaptchaEnterpriseReasonCodeOutcomeProvider.class,
-        configClass = RecaptchaEnterpriseReasonCodeNode.Config.class)
+        configClass = RecaptchaEnterpriseReasonCodeNode.Config.class, tags = {"risk"})
 public class RecaptchaEnterpriseReasonCodeNode implements Node {
 
     private static final String BUNDLE = RecaptchaEnterpriseReasonCodeNode.class.getName();
@@ -138,5 +137,15 @@ public class RecaptchaEnterpriseReasonCodeNode implements Node {
                                 bundle.getString("lowConfidenceScoreOutcome")),
                     new Outcome(RecaptchaReasonCodeOutcome.NONE.name(), bundle.getString("noneOutcome")));
         }
+    }
+
+    @Override
+    public InputState[] getInputs() {
+        return new InputState[] {new InputState(RECAPTCHA_REASON_CODE_LIST, true)};
+    }
+
+    @Override
+    public OutputState[] getOutputs() {
+        return new OutputState[]{new OutputState(RECAPTCHA_REASON_CODE_LIST, ImmutableMap.of("outcome", true))};
     }
 }
