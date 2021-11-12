@@ -17,18 +17,20 @@
 
 package org.google.RecaptchaEnterprise;
 
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_ASSESSMENT_NAME;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_REASON_CODE_LIST;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SCORE;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SITE_KEY;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_TOKEN;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.getRecaptchaEnterpriseServiceClient;
-
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
 
+import com.google.cloud.recaptchaenterprise.v1beta1.RecaptchaEnterpriseServiceV1Beta1Client;
+
+import com.google.recaptchaenterprise.v1beta1.AnnotateAssessmentRequest;
+import com.sun.identity.authentication.callbacks.HiddenValueCallback;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
 import org.forgerock.openam.auth.node.api.AbstractDecisionNode;
@@ -37,6 +39,8 @@ import org.forgerock.openam.auth.node.api.Node;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
 import org.forgerock.openam.sm.annotations.adapters.Password;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +51,8 @@ import com.google.recaptchaenterprise.v1.Event;
 import com.google.recaptchaenterprise.v1.ProjectName;
 import com.google.recaptchaenterprise.v1.RiskAnalysis;
 import com.sun.identity.sm.RequiredValueValidator;
+
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.*;
 
 /**
  * A node that instruments the ForgeRock Login page with reCaptcha Enterprise
@@ -97,16 +103,17 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
                 config.key());
 
         Assessment assessment = Assessment.newBuilder().setEvent(Event.newBuilder().setToken(
-                sharedState.get(RECAPTCHA_TOKEN).asString()).setSiteKey(sharedState.get(RECAPTCHA_SITE_KEY).asString())
-                                                                      .build()).build();
+                        sharedState.get(RECAPTCHA_TOKEN).asString()).setSiteKey(sharedState.get(RECAPTCHA_SITE_KEY).asString())
+                .build()).build();
         Assessment response = recaptchaEnterpriseServiceClient.createAssessment(ProjectName.of(config.projectId()),
-                                                                                assessment);
+                assessment);
         recaptchaEnterpriseServiceClient.close();
         if (!response.getTokenProperties().getValid()) {
             logger.error("Recaptcha Token is note valid");
             return goTo(false).replaceSharedState(sharedState).build();
         }
         RiskAnalysis analysis = response.getRiskAnalysis();
+
         List<RiskAnalysis.ClassificationReason> reasons = new ArrayList<>(analysis.getReasonsList());
         List<String> stringReasons = new ArrayList<>();
         reasons.forEach(reason -> stringReasons.add(reason.name()));
@@ -114,7 +121,48 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
         sharedState.put(RECAPTCHA_REASON_CODE_LIST, stringReasons);
         sharedState.put(RECAPTCHA_ASSESSMENT_NAME, response.getName());
 
+        try {
+            String token = context.getCallback(HiddenValueCallback.class).get().getValue();
+            RecaptchaEnterpriseServiceV1Beta1Client recaptchaEnterpriseServiceClient2 = getRecaptchaEnterpriseServiceClientBeta(
+                    config.key());
+            com.google.recaptchaenterprise.v1beta1.Assessment assessment2 = com.google.recaptchaenterprise.v1beta1.Assessment.newBuilder().setEvent(com.google.recaptchaenterprise.v1beta1.Event.newBuilder().setToken(token).setSiteKey(sharedState.get(RECAPTCHA_SITE_KEY).asString()).build()).build();
+            com.google.recaptchaenterprise.v1beta1.Assessment response2 = recaptchaEnterpriseServiceClient2.createAssessment(String.valueOf(ProjectName.of(config.projectId())),
+                    assessment2);
+            recaptchaEnterpriseServiceClient2.close();
+            sharedState.put("riskScore", response2.getScore());
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+
         return goTo(true).replaceSharedState(sharedState).build();
+    }
+
+    public static Integer getRiskScore() {
+
+
+
+        //        HttpRequest request = HttpRequest.newBuilder()
+//                .uri(URI.create(""))
+//                .setHeader("Authorization", "")
+//                .method("POST", HttpRequest.BodyPublishers.noBody())
+//                .build();
+//        HttpResponse<String> response = null;
+//        try {
+//            response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println(response.body());
+//
+//        JSONObject obj = new JSONObject(response.body());
+//        String riskScore = obj.getString("score");
+
+        return 1;
     }
 
 }
