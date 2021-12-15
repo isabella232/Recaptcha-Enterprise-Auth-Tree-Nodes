@@ -17,20 +17,28 @@
 
 package org.google.RecaptchaEnterprise;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.inject.Inject;
+import javax.inject.Named;
 
+import com.google.auth.Credentials;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.recaptchaenterprise.v1beta1.RecaptchaEnterpriseServiceV1Beta1Client;
 
 import com.google.recaptchaenterprise.v1beta1.AnnotateAssessmentRequest;
 import com.sun.identity.authentication.callbacks.HiddenValueCallback;
+import org.forgerock.http.protocol.Form;
+import org.forgerock.http.protocol.Request;
+import org.forgerock.http.protocol.Response;
+import org.forgerock.http.Handler;
+
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
 import org.forgerock.openam.auth.node.api.AbstractDecisionNode;
@@ -38,7 +46,10 @@ import org.forgerock.openam.auth.node.api.Action;
 import org.forgerock.openam.auth.node.api.Node;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.shared.guice.CloseableHttpClientHandlerProvider;
 import org.forgerock.openam.sm.annotations.adapters.Password;
+import org.forgerock.services.context.RootContext;
+import org.forgerock.util.thread.listener.ShutdownManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -63,6 +74,7 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
 
     private final Logger logger = LoggerFactory.getLogger(RecaptchaEnterpriseProfilerNode.class);
     private final Config config;
+    private final Handler handler;
 
 
     /**
@@ -91,8 +103,9 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
      * @param config The service config.
      */
     @Inject
-    public RecaptchaEnterpriseAssessmentNode(@Assisted Config config) {
+    public RecaptchaEnterpriseAssessmentNode(@Assisted Config config, @Named("CloseableHttpClientHandler") Handler handler) {
         this.config = config;
+        this.handler = handler;
     }
 
     @Override
@@ -109,7 +122,7 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
                 assessment);
         recaptchaEnterpriseServiceClient.close();
         if (!response.getTokenProperties().getValid()) {
-            logger.error("Recaptcha Token is note valid");
+            logger.error("Recaptcha Token is not valid");
             return goTo(false).replaceSharedState(sharedState).build();
         }
         RiskAnalysis analysis = response.getRiskAnalysis();
@@ -122,47 +135,60 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
         sharedState.put(RECAPTCHA_ASSESSMENT_NAME, response.getName());
 
         try {
-            String token = context.getCallback(HiddenValueCallback.class).get().getValue();
-            RecaptchaEnterpriseServiceV1Beta1Client recaptchaEnterpriseServiceClient2 = getRecaptchaEnterpriseServiceClientBeta(
-                    config.key());
-            com.google.recaptchaenterprise.v1beta1.Assessment assessment2 = com.google.recaptchaenterprise.v1beta1.Assessment.newBuilder().setEvent(com.google.recaptchaenterprise.v1beta1.Event.newBuilder().setToken(token).setSiteKey(sharedState.get(RECAPTCHA_SITE_KEY).asString()).build()).build();
-            com.google.recaptchaenterprise.v1beta1.Assessment response2 = recaptchaEnterpriseServiceClient2.createAssessment(String.valueOf(ProjectName.of(config.projectId())),
-                    assessment2);
-            recaptchaEnterpriseServiceClient2.close();
-            sharedState.put("riskScore", response2.getScore());
-        }
-        catch (Exception e) {
+            Integer score = getPasswordLeakScore(config.projectId(), sharedState.get("username").toString(), "test");
+            sharedState.put("recaptcha_password_leak_score", score);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-
 
         return goTo(true).replaceSharedState(sharedState).build();
     }
 
-    public static Integer getRiskScore() {
+    public static Integer getPasswordLeakScore(String projectId, String username, String password) throws JSONException, IOException, InterruptedException, URISyntaxException {
 
+        username = username.intern();
 
+        String inputJson = "{ \"password_leak_verification\": {\"canonicalized_username\": \""+username+"\", \"hashed_user_credentials\": \""+password+"\"} }";
 
-        //        HttpRequest request = HttpRequest.newBuilder()
-//                .uri(URI.create(""))
-//                .setHeader("Authorization", "")
-//                .method("POST", HttpRequest.BodyPublishers.noBody())
-//                .build();
-//        HttpResponse<String> response = null;
-//        try {
-//            response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//        System.out.println(response.body());
+        Process process = Runtime.getRuntime().exec("gcloud auth application-default print-access-token");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        String auth_token = reader.readLine();
+
+//        Form form = new Form();
+//        Request request = new Request().setUri("https://recaptchaenterprise.googleapis.com/v1beta1/projects/"+projectId+"/assessments")
+//                .setMethod("POST").setEntity(HttpRequest.BodyPublishers.ofString(inputJson));
+//        Response verificationResponse = handler.handle(new RootContext(), request)
+//                .getOrThrow();
 //
-//        JSONObject obj = new JSONObject(response.body());
-//        String riskScore = obj.getString("score");
 
-        return 1;
+        HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create("https://recaptchaenterprise.googleapis.com/v1beta1/projects/"+projectId+"/assessments"))
+        .setHeader("Authorization", "Bearer " + auth_token)
+        .method("POST", HttpRequest.BodyPublishers.ofString(inputJson))
+        .build();
+        HttpResponse<String> response = null;
+        try {
+            response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println(e);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            System.out.println(e);
+        }
+        System.out.println(response.body());
+
+        JSONObject obj = new JSONObject(response.body());
+        String riskScore = obj.getString("score");
+
+        return Integer.valueOf(riskScore);
     }
+
 
 }
