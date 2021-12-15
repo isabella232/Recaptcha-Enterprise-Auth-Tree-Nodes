@@ -3,8 +3,6 @@ package org.google.RecaptchaEnterprise;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import com.google.cloud.recaptchaenterprise.v1beta1.RecaptchaEnterpriseServiceV1Beta1Client;
-import com.google.cloud.recaptchaenterprise.v1beta1.RecaptchaEnterpriseServiceV1Beta1Settings;
 import org.forgerock.openam.auth.node.api.NodeProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,25 +51,4 @@ final class RecaptchaHelper {
         return recaptchaEnterpriseServiceClient;
     }
 
-    static RecaptchaEnterpriseServiceV1Beta1Client getRecaptchaEnterpriseServiceClientBeta(char[] key)
-            throws NodeProcessException {
-        RecaptchaEnterpriseServiceV1Beta1Client recaptchaEnterpriseServiceClient;
-        try {
-            ServiceAccountCredentials credentials = ServiceAccountCredentials.fromStream(
-                    new ByteArrayInputStream(new String(key).getBytes()));
-
-            RecaptchaEnterpriseServiceV1Beta1Settings
-                    recaptchaEnterpriseServiceSettings =
-                    RecaptchaEnterpriseServiceV1Beta1Settings.newBuilder().setCredentialsProvider(
-                            FixedCredentialsProvider.create(credentials)).build();
-
-            recaptchaEnterpriseServiceClient = RecaptchaEnterpriseServiceV1Beta1Client.create(
-                    recaptchaEnterpriseServiceSettings);
-        } catch (IOException e) {
-            logger.error("Unable to create Recaptcha Enterprise client");
-            logger.error(e.getMessage());
-            throw new NodeProcessException(e);
-        }
-        return recaptchaEnterpriseServiceClient;
-    }
 }
