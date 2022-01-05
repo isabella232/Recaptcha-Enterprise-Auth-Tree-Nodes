@@ -7,12 +7,10 @@ import java.util.ResourceBundle;
 
 import javax.inject.Inject;
 
+import com.google.common.collect.ImmutableMap;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
-import org.forgerock.openam.auth.node.api.Action;
-import org.forgerock.openam.auth.node.api.Node;
-import org.forgerock.openam.auth.node.api.OutcomeProvider;
-import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.auth.node.api.*;
 import org.forgerock.util.i18n.PreferredLocales;
 
 import com.google.common.collect.ImmutableList;
@@ -24,7 +22,7 @@ import com.sun.identity.sm.validators.FloatValidator;
  * A node that checks the Recaptcha Enterprise score.
  */
 @Node.Metadata(outcomeProvider = RecaptchaEnterpriseScoreNode.RecaptchaEnterpriseScoreNodeOutcomeProvider.class,
-        configClass = RecaptchaEnterpriseScoreNode.Config.class)
+        configClass = RecaptchaEnterpriseScoreNode.Config.class, tags = {"risk"})
 public class RecaptchaEnterpriseScoreNode implements Node {
 
     private static final String BUNDLE = RecaptchaEnterpriseScoreNode.class.getName();
@@ -89,5 +87,10 @@ public class RecaptchaEnterpriseScoreNode implements Node {
                     new Outcome(RecaptchaEnterpriseScoreNodeOutcome.LESS_THAN.name(),
                                 bundle.getString("lessThanOutcome")));
         }
+    }
+
+    @Override
+    public InputState[] getInputs() {
+        return new InputState[] {new InputState(RECAPTCHA_SCORE, true)};
     }
 }

@@ -1,16 +1,9 @@
 package org.google.RecaptchaEnterprise;
 
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_ASSESSMENT_NAME;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.getRecaptchaEnterpriseServiceClient;
-
 import javax.inject.Inject;
 
 import org.forgerock.openam.annotations.sm.Attribute;
-import org.forgerock.openam.auth.node.api.Action;
-import org.forgerock.openam.auth.node.api.Node;
-import org.forgerock.openam.auth.node.api.NodeProcessException;
-import org.forgerock.openam.auth.node.api.SingleOutcomeNode;
-import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.auth.node.api.*;
 import org.forgerock.openam.sm.annotations.adapters.Password;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,12 +13,15 @@ import com.google.inject.assistedinject.Assisted;
 import com.google.recaptchaenterprise.v1.AnnotateAssessmentRequest;
 import com.sun.identity.sm.RequiredValueValidator;
 
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.*;
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SITE_KEY;
+
 
 /**
  * A node that annotates recaptcha enterprise assessments.
  */
 @Node.Metadata(outcomeProvider = SingleOutcomeNode.OutcomeProvider.class,
-        configClass = RecaptchaEnterpriseAnnotationNode.Config.class)
+        configClass = RecaptchaEnterpriseAnnotationNode.Config.class, tags = {"risk"})
 public class RecaptchaEnterpriseAnnotationNode extends SingleOutcomeNode {
 
     private final Logger logger = LoggerFactory.getLogger(RecaptchaEnterpriseAnnotationNode.class);
@@ -78,6 +74,11 @@ public class RecaptchaEnterpriseAnnotationNode extends SingleOutcomeNode {
 
         }
         return goToNext().build();
+    }
+
+    @Override
+    public InputState[] getInputs() {
+        return new InputState[] {new InputState(RECAPTCHA_ASSESSMENT_NAME, true)};
     }
 
 }

@@ -17,25 +17,15 @@
 
 package org.google.RecaptchaEnterprise;
 
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_ASSESSMENT_NAME;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_REASON_CODE_LIST;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SCORE;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_SITE_KEY;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.RECAPTCHA_TOKEN;
-import static org.google.RecaptchaEnterprise.RecaptchaHelper.getRecaptchaEnterpriseServiceClient;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
 
+import com.google.common.collect.ImmutableMap;
 import org.forgerock.json.JsonValue;
 import org.forgerock.openam.annotations.sm.Attribute;
-import org.forgerock.openam.auth.node.api.AbstractDecisionNode;
-import org.forgerock.openam.auth.node.api.Action;
-import org.forgerock.openam.auth.node.api.Node;
-import org.forgerock.openam.auth.node.api.NodeProcessException;
-import org.forgerock.openam.auth.node.api.TreeContext;
+import org.forgerock.openam.auth.node.api.*;
 import org.forgerock.openam.sm.annotations.adapters.Password;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +38,13 @@ import com.google.recaptchaenterprise.v1.ProjectName;
 import com.google.recaptchaenterprise.v1.RiskAnalysis;
 import com.sun.identity.sm.RequiredValueValidator;
 
+import static org.google.RecaptchaEnterprise.RecaptchaHelper.*;
+
 /**
  * A node that instruments the ForgeRock Login page with reCaptcha Enterprise
  */
 @Node.Metadata(outcomeProvider = AbstractDecisionNode.OutcomeProvider.class,
-        configClass = RecaptchaEnterpriseAssessmentNode.Config.class)
+        configClass = RecaptchaEnterpriseAssessmentNode.Config.class, tags = {"risk"})
 public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
 
     private final Logger logger = LoggerFactory.getLogger(RecaptchaEnterpriseProfilerNode.class);
@@ -115,6 +107,18 @@ public class RecaptchaEnterpriseAssessmentNode extends AbstractDecisionNode {
         sharedState.put(RECAPTCHA_ASSESSMENT_NAME, response.getName());
 
         return goTo(true).replaceSharedState(sharedState).build();
+    }
+    @Override
+    public InputState[] getInputs() {
+        return new InputState[] {new InputState(RECAPTCHA_TOKEN, true), new InputState(RECAPTCHA_SITE_KEY, true)};
+    }
+
+    @Override
+    public OutputState[] getOutputs() {
+        return new OutputState[]{new OutputState(RECAPTCHA_SCORE, ImmutableMap.of("outcome", true)),
+                new OutputState(RECAPTCHA_REASON_CODE_LIST, ImmutableMap.of("outcome", true)),
+                new OutputState(RECAPTCHA_ASSESSMENT_NAME, ImmutableMap.of("outcome", true))
+        };
     }
 
 }
